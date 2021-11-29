@@ -6,8 +6,7 @@ import (
 
 	"github.com/mattn/go-runewidth"
 
-	"github.com/pterm/pterm/internal"
-)
+	"github.com/alacuku/pterm/internal")
 
 // Letters is a slice of Letter.
 type Letters []Letter

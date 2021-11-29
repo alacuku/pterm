@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pterm/pterm/internal"
+	"github.com/alacuku/pterm/internal"
 )
 
 var (

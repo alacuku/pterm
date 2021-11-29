@@ -7,7 +7,7 @@ import (
 
 	"github.com/atomicgo/cursor"
 
-	"github.com/pterm/pterm/internal"
+	"github.com/alacuku/pterm/internal"
 )
 
 // DefaultArea is the default area printer.

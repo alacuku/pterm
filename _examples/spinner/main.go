@@ -1,9 +1,8 @@
 package main
 
 import (
+	"github.com/alacuku/pterm"
 	"time"
-
-	"github.com/pterm/pterm"
 )
 
 func main() {

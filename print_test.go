@@ -8,7 +8,7 @@ import (
 
 	"github.com/MarvinJWendt/testza"
 	"github.com/pterm/pterm"
-	"github.com/pterm/pterm/internal"
+	"github.com/alacuku/pterm/internal"
 )
 
 // pterm.Sprint functions
