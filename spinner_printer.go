@@ -43,6 +43,8 @@ type SpinnerPrinter struct {
 	TimerStyle          *Style
 	Writer              io.Writer
 
+	Separator byte
+
 	IsActive bool
 
 	startedAt       time.Time
@@ -58,6 +60,11 @@ func (s SpinnerPrinter) WithText(text string) *SpinnerPrinter {
 // WithSequence adds a sequence to the SpinnerPrinter.
 func (s SpinnerPrinter) WithSequence(sequence ...string) *SpinnerPrinter {
 	s.Sequence = sequence
+	return &s
+}
+
+func (s SpinnerPrinter)WithSeparator(separator byte) *SpinnerPrinter{
+	s.Separator = separator
 	return &s
 }
 
@@ -115,7 +122,7 @@ func (s *SpinnerPrinter) UpdateText(text string) {
 	s.Text = text
 	if !RawOutput {
 		fClearLine(s.Writer)
-		Fprinto(s.Writer, s.Style.Sprint(s.currentSequence)+" "+s.MessageStyle.Sprint(s.Text))
+		Fprinto(s.Writer, s.Style.Sprint(s.currentSequence)+" "+s.MessageStyle.Sprint(s.Text)+ string(s.Separator))
 	}
 	if RawOutput {
 		Fprintln(s.Writer, s.Text)
@@ -147,7 +154,7 @@ func (s SpinnerPrinter) Start(text ...interface{}) (*SpinnerPrinter, error) {
 				if s.ShowTimer {
 					timer = " (" + time.Since(s.startedAt).Round(s.TimerRoundingFactor).String() + ")"
 				}
-				Fprinto(s.Writer, s.Style.Sprint(seq)+" "+s.MessageStyle.Sprint(s.Text)+s.TimerStyle.Sprint(timer))
+				Fprinto(s.Writer, s.Style.Sprint(seq)+" "+s.MessageStyle.Sprint(s.Text)+s.TimerStyle.Sprint(timer)+string(s.Separator))
 				s.currentSequence = seq
 				time.Sleep(s.Delay)
 			}
@@ -198,7 +205,7 @@ func (s *SpinnerPrinter) Success(message ...interface{}) {
 		message = []interface{}{s.Text}
 	}
 	fClearLine(s.Writer)
-	Fprinto(s.Writer, s.SuccessPrinter.Sprint(message...))
+	Fprinto(s.Writer, s.SuccessPrinter.Sprint(message...) + string(s.Separator))
 	_ = s.Stop()
 }
 
@@ -213,7 +220,7 @@ func (s *SpinnerPrinter) Fail(message ...interface{}) {
 		message = []interface{}{s.Text}
 	}
 	fClearLine(s.Writer)
-	Fprinto(s.Writer, s.FailPrinter.Sprint(message...))
+	Fprinto(s.Writer, s.FailPrinter.Sprint(message...) + string(s.Separator))
 	_ = s.Stop()
 }
 
@@ -228,6 +235,6 @@ func (s *SpinnerPrinter) Warning(message ...interface{}) {
 		message = []interface{}{s.Text}
 	}
 	fClearLine(s.Writer)
-	Fprinto(s.Writer, s.WarningPrinter.Sprint(message...))
+	Fprinto(s.Writer, s.WarningPrinter.Sprint(message...) + string(s.Separator))
 	_ = s.Stop()
 }
