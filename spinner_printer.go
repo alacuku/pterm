@@ -1,7 +1,10 @@
 package pterm
 
 import (
+	"fmt"
+	"github.com/atomicgo/cursor"
 	"io"
+	"math"
 	"os"
 	"time"
 
@@ -47,8 +50,10 @@ type SpinnerPrinter struct {
 
 	IsActive bool
 
-	startedAt       time.Time
-	currentSequence string
+	startedAt         time.Time
+	currentSequence   string
+	prevMessaggeLen   int
+	prevTerminalWidth int
 }
 
 // WithText adds a text to the SpinnerPrinter.
@@ -63,7 +68,7 @@ func (s SpinnerPrinter) WithSequence(sequence ...string) *SpinnerPrinter {
 	return &s
 }
 
-func (s SpinnerPrinter)WithSeparator(separator byte) *SpinnerPrinter{
+func (s SpinnerPrinter) WithSeparator(separator byte) *SpinnerPrinter {
 	s.Separator = separator
 	return &s
 }
@@ -120,9 +125,9 @@ func (s SpinnerPrinter) WithCustomWriter(writer io.Writer) *SpinnerPrinter {
 // Can be used live.
 func (s *SpinnerPrinter) UpdateText(text string) {
 	s.Text = text
+	s.prevMessaggeLen = len(text)
 	if !RawOutput {
-		fClearLine(s.Writer)
-		Fprinto(s.Writer, s.Style.Sprint(s.currentSequence)+" "+s.MessageStyle.Sprint(s.Text)+ string(s.Separator))
+		s.Print(s.Style.Sprint(s.currentSequence)+" "+s.MessageStyle.Sprint(s.Text)+string(s.Separator), s.currentSequence+" "+s.Text+string(s.Separator))
 	}
 	if RawOutput {
 		Fprintln(s.Writer, s.Text)
@@ -134,6 +139,7 @@ func (s SpinnerPrinter) Start(text ...interface{}) (*SpinnerPrinter, error) {
 	s.IsActive = true
 	s.startedAt = time.Now()
 	activeSpinnerPrinters = append(activeSpinnerPrinters, &s)
+	s.prevTerminalWidth = GetTerminalWidth()
 
 	if len(text) != 0 {
 		s.Text = Sprint(text...)
@@ -154,7 +160,7 @@ func (s SpinnerPrinter) Start(text ...interface{}) (*SpinnerPrinter, error) {
 				if s.ShowTimer {
 					timer = " (" + time.Since(s.startedAt).Round(s.TimerRoundingFactor).String() + ")"
 				}
-				Fprinto(s.Writer, s.Style.Sprint(seq)+" "+s.MessageStyle.Sprint(s.Text)+s.TimerStyle.Sprint(timer)+string(s.Separator))
+				s.Print(s.Style.Sprint(seq)+" "+s.MessageStyle.Sprint(s.Text)+s.TimerStyle.Sprint(timer)+string(s.Separator), seq + " " + s.Text + timer)
 				s.currentSequence = seq
 				time.Sleep(s.Delay)
 			}
@@ -168,8 +174,7 @@ func (s SpinnerPrinter) Start(text ...interface{}) (*SpinnerPrinter, error) {
 func (s *SpinnerPrinter) Stop() error {
 	s.IsActive = false
 	if s.RemoveWhenDone {
-		fClearLine(s.Writer)
-		Fprinto(s.Writer)
+		s.ClearLastMessage()
 	} else {
 		Fprintln(s.Writer)
 	}
@@ -204,8 +209,8 @@ func (s *SpinnerPrinter) Success(message ...interface{}) {
 	if len(message) == 0 {
 		message = []interface{}{s.Text}
 	}
-	fClearLine(s.Writer)
-	Fprinto(s.Writer, s.SuccessPrinter.Sprint(message...) + string(s.Separator))
+
+	s.Print(s.SuccessPrinter.Sprint(message...)+string(s.Separator), fmt.Sprint(message))
 	_ = s.Stop()
 }
 
@@ -219,8 +224,8 @@ func (s *SpinnerPrinter) Fail(message ...interface{}) {
 	if len(message) == 0 {
 		message = []interface{}{s.Text}
 	}
-	fClearLine(s.Writer)
-	Fprinto(s.Writer, s.FailPrinter.Sprint(message...) + string(s.Separator))
+
+	s.Print(s.FailPrinter.Sprint(message...)+string(s.Separator), fmt.Sprint(message))
 	_ = s.Stop()
 }
 
@@ -234,7 +239,35 @@ func (s *SpinnerPrinter) Warning(message ...interface{}) {
 	if len(message) == 0 {
 		message = []interface{}{s.Text}
 	}
-	fClearLine(s.Writer)
-	Fprinto(s.Writer, s.WarningPrinter.Sprint(message...) + string(s.Separator))
+
+	s.Print(s.WarningPrinter.Sprint(message...)+string(s.Separator), fmt.Sprint(message))
 	_ = s.Stop()
+}
+
+// ClearLastMessage removes the last message printed in the terminal.
+func (s *SpinnerPrinter) ClearLastMessage(){
+	row := int(math.Ceil(float64(s.prevMessaggeLen)/float64(GetTerminalWidth())))
+	if GetTerminalWidth() != s.prevTerminalWidth || row != 1{
+		for i := 1; i < int(math.Ceil(float64(s.prevMessaggeLen)/float64(GetTerminalWidth()))) ; i++{
+			fClearLine(s.Writer)
+			cursor.Up(1)
+		}
+		fClearLine(s.Writer)
+	}
+}
+
+// Print printer function takes care of the terminal size even when the output message
+// is longer than the terminal width
+func (s *SpinnerPrinter) Print(messagge, strippedM string){
+	row := int(math.Ceil(float64(s.prevMessaggeLen)/float64(GetTerminalWidth())))
+	if GetTerminalWidth() != s.prevTerminalWidth || row != 1 || len(strippedM) < s.prevMessaggeLen{
+		for i := 1; i < int(math.Ceil(float64(s.prevMessaggeLen)/float64(GetTerminalWidth()))) ; i++{
+			fClearLine(s.Writer)
+			cursor.Up(1)
+		}
+		fClearLine(s.Writer)
+	}
+	Fprinto(s.Writer, messagge)
+	s.prevMessaggeLen = len(strippedM)
+	s.prevTerminalWidth = GetTerminalWidth()
 }
